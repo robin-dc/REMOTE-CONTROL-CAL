@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { db } from '../config';
+import { ref, set, onValue } from 'firebase/database'
 
 const polarToCartesian = (cx, cy, r, angle) => {
     const rad = (Math.PI * (angle - 90)) / 180.0;
@@ -23,21 +25,21 @@ const describeArc = (x, y, radius, startAngle, endAngle) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-    const [data, setData] = useState([]);
+    const [data, setData] = useState({});
     const [value, setValue] = useState(0);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const newValue = Math.floor(Math.random() * 100);
-            setData((prevData) => {
-                const updatedData = [...prevData, newValue];
-                return updatedData.length > 10 ? updatedData.slice(-10) : updatedData;
-            });
-            setValue(newValue);
-        }, 1000);
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         const newValue = Math.floor(Math.random() * 100);
+    //         setData((prevData) => {
+    //             const updatedData = [...prevData, newValue];
+    //             return updatedData.length > 10 ? updatedData.slice(-10) : updatedData;
+    //         });
+    //         setValue(newValue);
+    //     }, 1000);
 
-        return () => clearInterval(interval);
-    }, []);
+    //     return () => clearInterval(interval);
+    // }, []);
 
     let status;
     if (value < 30) {
@@ -55,6 +57,44 @@ const HomeScreen = ({ navigation }) => {
     const maxAngle = 252;
     const arcLength = (value / 100) * maxAngle;
 
+    const forward = () => {
+        set(ref(db, 'control'), {
+              motor: "F",
+        })
+    }
+
+    const backward = () => {
+        set(ref(db, 'control'), {
+              motor: "B",
+        })
+    }
+
+    const left = () => {
+        set(ref(db, 'control'), {
+              motor: "L",
+        })
+    }
+
+    const right = () => {
+        set(ref(db, 'control'), {
+              motor: "R",
+        })
+    }
+
+    const stopMotor = () => {
+        set(ref(db, 'control'), {
+            motor: "",
+        });
+    };
+
+    useEffect(()=> {
+        const starCountRef = ref(db, 'sensor_data')
+        onValue(starCountRef, (snapshot) => {
+          const data = snapshot.val();
+          setData(data)
+        })
+      }, [])
+
     return (
         <View style={styles.container}>
             {/* Back Button and Header */}
@@ -69,7 +109,9 @@ const HomeScreen = ({ navigation }) => {
                 {/* CONTROLLER */}
                 <View style={{width: '50vw', borderRadius: 20, alignItems: 'center', flexDirection: 'column'}}>
                      {/* FORWARD */}
-                    <TouchableOpacity style={[styles.progressContainer, {marginBottom: -15}]} onPress={() => {}}>
+                    <TouchableOpacity style={[styles.progressContainer, {marginBottom: -15}]} onPressIn={forward}
+                    onPressOut={stopMotor}
+                    >
                         <Image
                             source={require('../img/up.png')}
                         />
@@ -77,7 +119,9 @@ const HomeScreen = ({ navigation }) => {
 
                     <View style={{width: '50vw', flexDirection: 'row'}}>
                         {/* LEFT */}
-                        <TouchableOpacity style={[styles.progressContainer, {marginRight: -15}]} onPress={() => {}}>
+                        <TouchableOpacity style={[styles.progressContainer, {marginRight: -15}]}     onPressIn={left}
+                        onPressOut={stopMotor}
+                        >
                             <Image
                                 source={require('../img/left.png')}
                             />
@@ -90,7 +134,9 @@ const HomeScreen = ({ navigation }) => {
                         </View>
 
                         {/* RIGHT */}
-                        <TouchableOpacity style={[styles.progressContainer, {marginLeft: -15}]} onPress={() => {}}>
+                        <TouchableOpacity style={[styles.progressContainer, {marginLeft: -15}]} onPressIn={right}
+                        onPressOut={stopMotor}
+                        >
                             <Image
                                 source={require('../img/right.png')}
                             />
@@ -98,7 +144,9 @@ const HomeScreen = ({ navigation }) => {
                     </View>
 
                     {/* BACKWARD */}
-                    <TouchableOpacity style={[styles.progressContainer, {marginTop: -15}]} onPress={() => {}}>
+                    <TouchableOpacity style={[styles.progressContainer, {marginTop: -15}]} onPressIn={backward}
+                    onPressOut={stopMotor}
+                    >
                         <Image
                             source={require('../img/down.png')}
                         />
@@ -115,16 +163,22 @@ const HomeScreen = ({ navigation }) => {
 
                         {/* Button to connect to bluetooth */}
                         <TouchableOpacity style={[styles.progressContainer, {flexDirection: 'row', gap: 10, width: 140, paddingHorizontal: 30}]}>
-                            <Text style={[styles.description, { fontSize: 15}]}>Connect to Bluetooth
+                            <Text style={[styles.description, { fontSize: 15}]}>Connected to Firebase
                             </Text>
                             <Image
                                 source={require('../img/bluetooth.png')}
                             />
                         </TouchableOpacity>
                         <View style={styles.progressContainer}>
-                            <Image
-                                source={require('../img/fire-disabled.png')}
-                            />
+                            {data?.flame_sensor ?
+                                <Image
+                                    source={require('../img/fire-active.png')}
+                                />
+                            :
+                                <Image
+                                    source={require('../img/fire-disabled.png')}
+                                />
+                            }
                         </View>
                     </View>
 
@@ -150,7 +204,7 @@ const HomeScreen = ({ navigation }) => {
                         <Text style={[styles.description]}>MQ2 - {status}</Text>
 
                         <View style={styles.statusOverlay}>
-                            <Text style={[styles.progressText, { color: statusColor }]}>{`${value}%`}</Text>
+                            <Text style={[styles.progressText, { color: statusColor }]}>{`${data?.mq2_value}%`}</Text>
                         </View>
                     </View>
 
@@ -175,7 +229,7 @@ const HomeScreen = ({ navigation }) => {
                         <Text style={[styles.description]}>MQ9 - {status}</Text>
                         {/* Percentage inside circle */}
                         <View style={styles.statusOverlay}>
-                            <Text style={[styles.progressText, { color: statusColor }]}>{`${value}%`}</Text>
+                            <Text style={[styles.progressText, { color: statusColor }]}>{`${data?.mq9_value}%`}</Text>
                         </View>
                     </View>
                 </View>
@@ -247,7 +301,7 @@ const styles = StyleSheet.create({
     statusOverlay: {
         position: 'absolute',
         top: '73%',
-        left: '73%',
+        left: '63%',
         transform: [{ translateX: -50 }, { translateY: -50 }],
     },
     statusText: {

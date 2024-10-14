@@ -11,15 +11,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "plugins": [
-      [
-        "@config-plugins/react-native-ble-plx",
-        {
-          "isBackgroundEnabled": false,
-          "modes": ["peripheral", "central"]
-        }
-      ]
-    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
